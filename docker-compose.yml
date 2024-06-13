@@ -1,0 +1,49 @@
+name: 'speakn'
+
+services:
+  db:
+    image: postgres:16.1-alpine3.19
+    ports:
+      - '5432:5432'
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=speakn_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  rabbit:
+    image: rabbitmq:3.12.11-management-alpine
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    environment:
+      - RABBIT_USER=guest
+      - RABBIT_PASSWORD=guest
+      - RABBIT_HOST=127.0.0.1
+    volumes:
+      - rabbitdata:/var/lib/rabbitmq
+
+  response-processor:
+    build:
+      context: .
+    container_name: response-processor
+    command: sh -c "python -m worker"
+    environment:
+      - RESPONSE_QUEUE=response_queue
+      - DB_NAME=speakn_db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_HOST=db
+      - DB_PORT=5432
+      - RABBIT_URL=pyamqp://guest:guest@rabbit:5672//
+    volumes:
+      - ./:/app
+    depends_on:
+      - db
+      - rabbit
+
+volumes:
+  pgdata: {}
+  rabbitdata: {}
